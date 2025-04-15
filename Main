@@ -1,0 +1,115 @@
+# Create sample data from miRTarBase-like structure
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Create a more focused dataset with validated targets
+mirna_data = {
+    'hsa-miR-140-3p': {
+        'IDS': 99,
+        'ADAM10': 99,
+        'ACVR2B': 98,
+        'ZNF131': 98,
+        'NFYA': 98,
+        'PCDH17': 98
+    },
+    'hsa-miR-122-5p': {
+        'HNRNPU': 97,
+        'CPEB1': 97,
+        'CD40LG': 97,
+        'ANKRD13C': 96,
+        'ZNF827': 96,
+        'RANBP3L': 95
+    },
+    'hsa-miR-155-5p': {
+        'ZNF652': 99,
+        'ZIC3': 99,
+        'BACH1': 99,
+        'JARID2': 99,
+        'KDM5B': 97,
+        'ZNF98': 97
+    },
+}
+
+# Convert to DataFrame
+all_genes = set()
+for targets in mirna_data.values():
+    all_genes.update(targets.keys())
+all_genes = sorted(list(all_genes))
+
+data = []
+for mirna in mirna_data:
+    row = []
+    for gene in all_genes:
+        row.append(mirna_data[mirna].get(gene, np.nan))
+    data.append(row)
+
+heatmap_df = pd.DataFrame(data, index=list(mirna_data.keys()), columns=all_genes)
+
+# Create an enhanced heatmap
+plt.figure(figsize=(15, 8))
+sns.set_style("whitegrid")
+sns.set_context("notebook", font_scale=1.2)
+
+# Create mask for NaN values
+mask = np.isnan(heatmap_df)
+
+# Generate heatmap
+g = sns.heatmap(
+    heatmap_df,
+    cmap='RdYlBu_r',
+    linewidths=0.5,
+    linecolor='white',
+    square=True,
+    mask=mask,
+    cbar_kws={
+        'label': 'Confidence Score',
+        'orientation': 'horizontal',
+        'pad': 0.2
+    },
+    annot=True,
+    fmt='.2f',
+    annot_kws={'size': 10}
+)
+
+# Customize the plot
+plt.title('miRNA-Gene Target Interaction Heatmap', pad=20, size=16)
+plt.xlabel('Target Genes', size=12)
+plt.ylabel('miRNAs', size=12)
+
+# Rotate x-axis labels for better readability
+plt.xticks(rotation=45, ha='right')
+plt.yticks(rotation=0)
+
+# Adjust layout to prevent label cutoff
+plt.tight_layout()
+
+# Save the plot with high resolution
+plt.savefig('mirna_gene_heatmap_enhanced.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+# Save to Excel with formatting
+excel_filename = 'mirna_gene_targets_enhanced.xlsx'
+with pd.ExcelWriter(excel_filename, engine='openpyxl') as writer:
+    heatmap_df.to_excel(writer, sheet_name='Target Scores')
+    
+    # Access the worksheet
+    worksheet = writer.sheets['Target Scores']
+    
+    # Add some basic formatting
+    for column in worksheet.columns:
+        max_length = 0
+        column = [cell for cell in column]
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        worksheet.column_dimensions[column[0].column_letter].width = adjusted_width
+
+print('Files saved:')
+print('- Heatmap image: mirna_gene_heatmap_enhanced.png')
+print('- Excel data: mirna_gene_targets_enhanced.xlsx')
